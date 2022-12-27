@@ -38,18 +38,42 @@ num vector3_dot(
 	);
 }
 
-struct vector3 vector3_sub(
-	struct vector3 a,
-	struct vector3 b
+num vector3_length(
+	struct vector3 a
 ) {
-	struct vector3 result = VECTOR3_INIT(
-		a.x - b.x,
-		a.y - b.y,
-		a.z - b.z
+	return (num)sqrt(
+		a.x * a.x +
+		a.y * a.y +
+		a.z * a.z
 	);
-
-	return result;
 }
+
+#define DECL_VECTOR3_OPERATION(name, op) \
+	struct vector3 name( \
+		struct vector3 a, \
+		struct vector3 b \
+	) { \
+		struct vector3 result = VECTOR3_INIT( \
+			a.x op b.x, \
+			a.y op b.y, \
+			a.z op b.z \
+		); \
+	  \
+		return result; \
+	} \
+
+DECL_VECTOR3_OPERATION(vector3_add, +)
+DECL_VECTOR3_OPERATION(vector3_sub, -)
+DECL_VECTOR3_OPERATION(vector3_mul, *)
+DECL_VECTOR3_OPERATION(vector3_div, /)
+
+//// scene
+struct scene {
+	struct sphere *spheres;
+	int sphere_length;
+	struct light *lights;
+	int light_length;
+};
 
 //// spheres
 struct sphere {
@@ -84,11 +108,60 @@ num *intersect_ray_sphere(
 	return t;
 }
 
-//// raycasting
-struct scene {
-	struct sphere *spheres;
-	int sphere_length;
+//// lighting
+enum light_type {
+	POINT = 0,
+	DIRECTIONAL,
+	AMBIENT
 };
+
+struct light {
+	enum light_type type;
+	struct vector3 pos;
+	num intensity;
+};
+
+num compute_lighting(
+	struct vector3 pos,
+	struct vector3 normal,
+	struct scene *config
+) {
+	num intensity = 0;
+	for(int i = 0; i < config->light_length; i++) {
+		struct vector3 l = VECTOR3_INIT(0, 0, 0);
+		switch(config->lights[i].type) {
+			case AMBIENT:
+				intensity += config->lights[i].intensity;
+				continue;
+
+			case DIRECTIONAL:
+				l = config->lights[i].pos;
+				break;
+
+			case POINT:
+				l = vector3_sub(config->lights[i].pos, pos);
+				break;
+
+			default:
+				break;
+		}
+
+		num n_dot_l = vector3_dot(normal, l);
+		if(n_dot_l > 0) {
+			intensity += (
+				config->lights[i].intensity *
+				n_dot_l / (
+					vector3_length(normal) *
+					vector3_length(l)
+				)
+			);
+		}
+	}
+	
+	return intensity;
+}
+
+//// raycasting
 
 #define X_IN(x, a, b) (((x) >= (a)) && ((x) <= (b)))
 struct vector3 trace_ray(
@@ -123,7 +196,46 @@ struct vector3 trace_ray(
 		return background_color;
 	}
 
-	return closest_sphere->color;
+	struct vector3 closest_t_vec = VECTOR3_INIT(
+		closest_t, 
+		closest_t, 
+		closest_t
+	);
+	
+	struct vector3 pos = vector3_mul(
+		vector3_add(
+			origin, 
+			closest_t_vec
+		), 
+		
+		d
+	);
+	
+	struct vector3 normal = vector3_sub(pos, closest_sphere->center);
+	num n_length = vector3_length(normal);
+	struct vector3 n_length_vec = VECTOR3_INIT(
+		n_length, 
+		n_length, 
+		n_length
+	);
+	
+	normal = vector3_div(normal, n_length_vec);
+	num computed = compute_lighting(
+		pos, 
+		normal,
+		config
+	);
+
+	struct vector3 computed_vec = VECTOR3_INIT(
+		computed,
+		computed,
+		computed
+	);
+	
+	return vector3_mul(
+		closest_sphere->color, 
+		computed_vec
+	);
 }
 
 struct vector3 screen_to_viewport(
@@ -199,7 +311,7 @@ void quit_sdl() {
 	SDL_Quit();
 }
 
-#define SPHERE_LENGTH 3
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 int main() {
 	if(SDL_Init(SDL_INIT_VIDEO) == -1) {
 		die("SDL_Init");
@@ -220,7 +332,7 @@ int main() {
 
 	SDL_Event event;
 
-	struct sphere config_spheres[SPHERE_LENGTH] = {
+	struct sphere config_spheres[] = {
 		{
 			.color = VECTOR3_INIT(255, 0, 0),
 			.center = VECTOR3_INIT(0, -1, 3),
@@ -237,12 +349,40 @@ int main() {
 			.color = VECTOR3_INIT(0, 255, 0),
 			.center = VECTOR3_INIT(-2, 0, 4),
 			.raduis = 1
+		},
+
+		{
+			.color = VECTOR3_INIT(255, 255, 0),
+			.center = VECTOR3_INIT(0, -5001, 0),
+			.raduis = 5000
+		}
+	};
+
+	struct light config_lights[] = {
+		{
+			.type = AMBIENT,
+			.intensity = 0.2,
+			.pos = VECTOR3_INIT(0, 0, 0)
+		},
+
+		{
+			.type = POINT,
+			.intensity = 0.6,
+			.pos = VECTOR3_INIT(2, 1, 0)
+		},
+
+		{
+			.type = DIRECTIONAL,
+			.intensity = 0.2,
+			.pos = VECTOR3_INIT(1, 4, 4)
 		}
 	};
 	
 	struct scene config = {
 		.spheres = config_spheres,
-		.sphere_length = SPHERE_LENGTH
+		.sphere_length = ARRAY_SIZE(config_spheres),
+		.lights = config_lights,
+		.light_length = ARRAY_SIZE(config_lights)
 	};
 
 	raycast_with_renderer(&config, renderer);
