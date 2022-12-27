@@ -471,7 +471,7 @@ int main() {
 			.center = VECTOR3_INIT(0, -1, 3),
 			.raduis = 1,
 			.specular = 500,
-			.reflective = 0.8
+			.reflective = 0.2
 		},
 
 		{
@@ -479,7 +479,7 @@ int main() {
 			.center	= VECTOR3_INIT(2, 0, 4),
 			.raduis = 1,
 			.specular = 500,
-			.reflective = 0.8
+			.reflective = 0.3
 		},
 
 		{
@@ -487,7 +487,7 @@ int main() {
 			.center = VECTOR3_INIT(-2, 0, 4),
 			.raduis = 1,
 			.specular = 10,
-			.reflective = 0.8
+			.reflective = 0.4
 		},
 
 		{
