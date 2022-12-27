@@ -4,8 +4,9 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 
-//// declarations
+//// settings
 #define RAYCAST_MAX 1000
+#define RAYCAST_DEPTH_MAX 3
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define VIEWPORT_WIDTH 1
@@ -26,6 +27,9 @@ struct vector3 {
 		.y = arg_y, \
 		.z = arg_z \
 	}
+
+#define VECTOR3_INIT_NUM(n) \
+	VECTOR3_INIT(n, n, n)
 
 num vector3_dot(
 	struct vector3 a,
@@ -68,6 +72,14 @@ DECL_VECTOR3_OPERATION(vector3_mul, *)
 DECL_VECTOR3_OPERATION(vector3_div, /)
 
 //// scene
+struct sphere {
+	struct vector3 color;
+	struct vector3 center;
+	num raduis;
+	num specular;
+	num reflective;
+};
+
 struct scene {
 	struct sphere *spheres;
 	int sphere_length;
@@ -75,13 +87,12 @@ struct scene {
 	int light_length;
 };
 
-//// spheres
-struct sphere {
-	struct vector3 color;
-	struct vector3 center;
-	num raduis;
+struct closest_return {
+	num closest_t;
+	struct sphere *closest_sphere;	
 };
 
+//// spheres
 num *intersect_ray_sphere(
 	struct vector3 origin,
 	struct vector3 d,
@@ -119,16 +130,28 @@ struct light {
 	enum light_type type;
 	struct vector3 pos;
 	num intensity;
+	num reflective;
 };
+
+struct closest_return closest_intersection(
+	struct vector3 origin,
+	struct vector3,
+	num,
+	num,
+	struct scene *
+);
 
 num compute_lighting(
 	struct vector3 pos,
 	struct vector3 normal,
+	struct vector3 v,
+	num specular,
+	num t_max,
 	struct scene *config
 ) {
 	num intensity = 0;
 	for(int i = 0; i < config->light_length; i++) {
-		struct vector3 l = VECTOR3_INIT(0, 0, 0);
+		struct vector3 l = VECTOR3_INIT_NUM(0);
 		switch(config->lights[i].type) {
 			case AMBIENT:
 				intensity += config->lights[i].intensity;
@@ -146,6 +169,19 @@ num compute_lighting(
 				break;
 		}
 
+		struct closest_return shadow = closest_intersection(
+			pos,
+			l,
+			0.001,
+			t_max,
+			config
+		);
+
+		struct sphere *shadow_sphere = shadow.closest_sphere;
+		if(shadow_sphere != NULL) {
+			continue;
+		}
+		
 		num n_dot_l = vector3_dot(normal, l);
 		if(n_dot_l > 0) {
 			intensity += (
@@ -156,15 +192,42 @@ num compute_lighting(
 				)
 			);
 		}
+
+		if(specular != -1) {
+			struct vector3 n_dot_l_vec = VECTOR3_INIT_NUM(n_dot_l);
+			struct vector3 two_vec = VECTOR3_INIT_NUM(2);
+			struct vector3 r = vector3_mul(two_vec, normal);
+			r = vector3_mul(r, n_dot_l_vec);
+			r = vector3_sub(r, l);
+
+			num r_dot_v = vector3_dot(r, v);
+			if(r_dot_v > 0) {
+				intensity += (
+					config->lights[i].intensity *
+					pow(
+						r_dot_v /
+						(
+							vector3_length(r) *
+							vector3_length(v)
+						),
+
+						specular
+					)
+				);
+			}
+		}
 	}
-	
-	return intensity;
+
+	// Intensity sometimes goes above 1.
+	// If that happens, the color will go above 255.
+	// When that happens, SDL will overflow back
+	// to zero.
+	return intensity < 1 ? intensity : 1;
 }
 
 //// raycasting
-
 #define X_IN(x, a, b) (((x) >= (a)) && ((x) <= (b)))
-struct vector3 trace_ray(
+struct closest_return closest_intersection(
 	struct vector3 origin,
 	struct vector3 d,
 	num t_min,
@@ -191,17 +254,55 @@ struct vector3 trace_ray(
 		}
 	}
 	
+	struct closest_return result = {
+		.closest_t = closest_t,
+		.closest_sphere = closest_sphere
+	};
+
+	return result;
+}
+
+struct vector3 reflect_ray(
+	struct vector3 ray,
+	struct vector3 normal
+) {
+	struct vector3 two_vec = VECTOR3_INIT_NUM(2);
+	struct vector3 result = vector3_mul(
+		two_vec,
+		normal
+	);
+
+	num n_dot_r = vector3_dot(normal, ray);
+	struct vector3 n_dot_r_vec = VECTOR3_INIT_NUM(n_dot_r);
+	result = vector3_mul(result, n_dot_r_vec);
+	result = vector3_sub(result, ray);
+	return result;
+}
+
+struct vector3 trace_ray(
+	struct vector3 origin,
+	struct vector3 d,
+	num t_min,
+	num t_max,
+	struct scene *config,
+	int depth
+) {	
+	struct closest_return closest = closest_intersection(
+		origin,
+		d,
+		t_min,
+		t_max,
+		config
+	);
+
+	num closest_t = closest.closest_t;
+	struct sphere *closest_sphere = closest.closest_sphere;
 	if(closest_sphere == NULL) {
-		struct vector3 background_color = VECTOR3_INIT(0, 0, 0);
+		struct vector3 background_color = VECTOR3_INIT_NUM(0);
 		return background_color;
 	}
 
-	struct vector3 closest_t_vec = VECTOR3_INIT(
-		closest_t, 
-		closest_t, 
-		closest_t
-	);
-	
+	struct vector3 closest_t_vec = VECTOR3_INIT_NUM(closest_t);
 	struct vector3 pos = vector3_mul(
 		vector3_add(
 			origin, 
@@ -213,29 +314,54 @@ struct vector3 trace_ray(
 	
 	struct vector3 normal = vector3_sub(pos, closest_sphere->center);
 	num n_length = vector3_length(normal);
-	struct vector3 n_length_vec = VECTOR3_INIT(
-		n_length, 
-		n_length, 
-		n_length
-	);
-	
+	struct vector3 n_length_vec = VECTOR3_INIT_NUM(n_length);
 	normal = vector3_div(normal, n_length_vec);
+	struct vector3 neg_one_vec = VECTOR3_INIT_NUM(-1);
+	struct vector3 neg_d = vector3_mul(d, neg_one_vec);
 	num computed = compute_lighting(
 		pos, 
 		normal,
+		neg_d,
+		closest_sphere->specular,
+		t_max,
 		config
 	);
 
-	struct vector3 computed_vec = VECTOR3_INIT(
-		computed,
-		computed,
-		computed
-	);
-	
-	return vector3_mul(
+	struct vector3 computed_vec = VECTOR3_INIT_NUM(computed);
+	struct vector3 local_color = vector3_mul(
 		closest_sphere->color, 
 		computed_vec
 	);
+
+	num r = closest_sphere->reflective;
+	if(
+		depth >= RAYCAST_DEPTH_MAX ||
+		r <= 0
+	) {
+		return local_color;
+	}
+
+	struct vector3 ray = reflect_ray(neg_d, normal);
+	struct vector3 reflected_color = trace_ray(
+		pos,
+		ray,
+		0.001,
+		RAYCAST_MAX,
+		config,
+		depth + 1
+	);
+
+	num one_sub_r = 1 - r;
+	struct vector3 one_sub_r_vec = VECTOR3_INIT_NUM(one_sub_r);
+	struct vector3 result = vector3_mul(
+		local_color,
+		one_sub_r_vec
+	);
+
+	struct vector3 r_vec = VECTOR3_INIT_NUM(r);
+	result = vector3_add(result, reflected_color);
+	result = vector3_mul(result, r_vec);
+	return result;
 }
 
 struct vector3 screen_to_viewport(
@@ -255,7 +381,7 @@ void raycast_with_renderer(
 	struct scene *config,
 	SDL_Renderer *renderer
 ) {
-	struct vector3 origin = VECTOR3_INIT(0, 0, 0);
+	struct vector3 origin = VECTOR3_INIT_NUM(0);
 	for(
 		num x = -SCREEN_WIDTH / 2; 
 		x < SCREEN_WIDTH / 2; 
@@ -272,7 +398,8 @@ void raycast_with_renderer(
 				d,
 				1,
 				RAYCAST_MAX,
-				config
+				config,
+				0
 			);
 			
 			SDL_SetRenderDrawColor(
@@ -336,25 +463,33 @@ int main() {
 		{
 			.color = VECTOR3_INIT(255, 0, 0),
 			.center = VECTOR3_INIT(0, -1, 3),
-			.raduis = 1
+			.raduis = 1,
+			.specular = 500,
+			.reflective = 0.2
 		},
 
 		{
 			.color = VECTOR3_INIT(0, 0, 255),
 			.center	= VECTOR3_INIT(2, 0, 4),
-			.raduis = 1
+			.raduis = 1,
+			.specular = 500,
+			.reflective = 0.3
 		},
 
 		{
 			.color = VECTOR3_INIT(0, 255, 0),
 			.center = VECTOR3_INIT(-2, 0, 4),
-			.raduis = 1
+			.raduis = 1,
+			.specular = 10,
+			.reflective = 0.4
 		},
 
 		{
 			.color = VECTOR3_INIT(255, 255, 0),
 			.center = VECTOR3_INIT(0, -5001, 0),
-			.raduis = 5000
+			.raduis = 5000,
+			.specular = 1000,
+			.reflective = 0.5
 		}
 	};
 
