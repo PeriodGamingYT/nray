@@ -1,8 +1,8 @@
 //// includes
 #include <stdio.h>
 #include <stdlib.h>
-#include <SDL2/SDL.h>
 #include <math.h>
+#include <SDL2/SDL.h>
 
 //// settings
 #define RAYTRACE_MAX 1000
@@ -385,7 +385,7 @@ struct vector3 screen_to_viewport(
 	return result;
 }
 
-void RAYTRACE_with_renderer(
+void raytrace_with_renderer(
 	struct scene *config,
 	SDL_Renderer *renderer
 ) {
@@ -467,8 +467,6 @@ int main() {
 	if(window == NULL || renderer == NULL) {
 		die("SDL_CreateWindowAndRenderer");
 	}
-
-	SDL_Event event;
 
 	struct sphere config_spheres[] = {
 		{
@@ -567,8 +565,9 @@ int main() {
 		.camera_rotation = VECTOR3_INIT(1, 1, 1)
 	};
 
-	RAYTRACE_with_renderer(&config, renderer);
+	raytrace_with_renderer(&config, renderer);
 	int is_keep_open = 1;
+	SDL_Event event;
 	while(
 		SDL_PollEvent(&event) != -1 && 
 		is_keep_open
