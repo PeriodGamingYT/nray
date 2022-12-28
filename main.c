@@ -85,6 +85,8 @@ struct scene {
 	int sphere_length;
 	struct light *lights;
 	int light_length;
+	struct vector3 camera_position;
+	struct vector3 camera_rotation;
 };
 
 struct closest_return {
@@ -387,7 +389,6 @@ void raycast_with_renderer(
 	struct scene *config,
 	SDL_Renderer *renderer
 ) {
-	struct vector3 origin = VECTOR3_INIT_NUM(0);
 	for(
 		num x = -SCREEN_WIDTH / 2; 
 		x < SCREEN_WIDTH / 2; 
@@ -398,9 +399,13 @@ void raycast_with_renderer(
 			y < SCREEN_HEIGHT / 2;
 			y++
 		) {
-			struct vector3 d = screen_to_viewport(x, y);
+			struct vector3 d = vector3_mul(
+				config->camera_rotation,
+				screen_to_viewport(x, y)
+			);
+
 			struct vector3 color = trace_ray(
-				origin,
+				config->camera_position,
 				d,
 				1,
 				RAYCAST_MAX,
@@ -467,35 +472,67 @@ int main() {
 
 	struct sphere config_spheres[] = {
 		{
-			.color = VECTOR3_INIT(255, 0, 0),
-			.center = VECTOR3_INIT(0, -1, 3),
-			.raduis = 1,
-			.specular = 500,
-			.reflective = 0.2
+			.color = VECTOR3_INIT(255, 255, 0),
+			.center = VECTOR3_INIT(0, -101, 0),
+			.raduis = 100,
+			.specular = 0,
+			.reflective = 0
 		},
 
 		{
-			.color = VECTOR3_INIT(0, 0, 255),
-			.center	= VECTOR3_INIT(2, 0, 4),
-			.raduis = 1,
-			.specular = 500,
-			.reflective = 0.3
+			.color = VECTOR3_INIT(0, 255, 255),
+			.center = VECTOR3_INIT(0, -5002, 0),
+			.raduis = 5000,
+			.specular = 0.5,
+			.reflective = 0
+		},
+
+		{
+			.color = VECTOR3_INIT(222, 184, 135),
+			.center = VECTOR3_INIT(0.2, -0.2, 1),
+			.raduis = 0.05,
+			.specular = 0.8,
+			.reflective = 0.05
+		},
+
+		{
+			.color = VECTOR3_INIT(222, 184, 135),
+			.center = VECTOR3_INIT(0.23, -0.12, 1),
+			.raduis = 0.05,
+			.specular = 0.8,
+			.reflective = 0.05
+		},
+
+		{
+			.color = VECTOR3_INIT(222, 184, 135),
+			.center = VECTOR3_INIT(0.24, -0.04, 1),
+			.raduis = 0.05,
+			.specular = 0.8,
+			.reflective = 0.05
+		},
+
+		{
+			.color = VECTOR3_INIT(222, 184, 135),
+			.center = VECTOR3_INIT(0.22, 0.04, 1),
+			.raduis = 0.05,
+			.specular = 0.8,
+			.reflective = 0.05
+		},
+
+		{
+			.color = VECTOR3_INIT(222, 184, 135),
+			.center = VECTOR3_INIT(0.2, 0.12, 1),
+			.raduis = 0.05,
+			.specular = 0.8,
+			.reflective = 0.05
 		},
 
 		{
 			.color = VECTOR3_INIT(0, 255, 0),
-			.center = VECTOR3_INIT(-2, 0, 4),
-			.raduis = 1,
-			.specular = 10,
-			.reflective = 0.4
-		},
-
-		{
-			.color = VECTOR3_INIT(255, 255, 0),
-			.center = VECTOR3_INIT(0, -5001, 0),
-			.raduis = 5000,
-			.specular = 1000,
-			.reflective = 0.5
+			.center = VECTOR3_INIT(0.22, 0.32, 1),
+			.raduis = 0.2,
+			.specular = 0.8,
+			.reflective = 0.1
 		}
 	};
 
@@ -523,7 +560,11 @@ int main() {
 		.spheres = config_spheres,
 		.sphere_length = ARRAY_SIZE(config_spheres),
 		.lights = config_lights,
-		.light_length = ARRAY_SIZE(config_lights)
+		.light_length = ARRAY_SIZE(config_lights),
+		.camera_position = VECTOR3_INIT(0, 0, 0),
+
+		// NOTE: Must be above one on all coordinates.
+		.camera_rotation = VECTOR3_INIT(1, 1, 1)
 	};
 
 	raycast_with_renderer(&config, renderer);
