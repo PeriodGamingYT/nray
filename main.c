@@ -5,8 +5,8 @@
 #include <math.h>
 
 //// settings
-#define RAYCAST_MAX 1000
-#define RAYCAST_DEPTH_MAX 3
+#define RAYTRACE_MAX 1000
+#define RAYTRACE_DEPTH_MAX 3
 #define SCREEN_WIDTH 800
 #define SCREEN_HEIGHT 600
 #define VIEWPORT_WIDTH 1
@@ -101,7 +101,7 @@ num *intersect_ray_sphere(
 	struct sphere arg_sphere
 ) {
 	num t[2] = { 0 };
-	num inf_t[2] = { RAYCAST_MAX };
+	num inf_t[2] = { RAYTRACE_MAX };
 	num r = arg_sphere.raduis;
 	struct vector3 co = vector3_sub(
 		origin, 
@@ -227,7 +227,7 @@ num compute_lighting(
 	return intensity < 1 ? intensity : 1;
 }
 
-//// raycasting
+//// raytracing
 #define X_IN(x, a, b) (((x) >= (a)) && ((x) <= (b)))
 struct closest_return closest_intersection(
 	struct vector3 origin,
@@ -236,7 +236,7 @@ struct closest_return closest_intersection(
 	num t_max,
 	struct scene *config
 ) {
-	num closest_t = RAYCAST_MAX;
+	num closest_t = RAYTRACE_MAX;
 	struct sphere *closest_sphere = NULL;
 	for(int i = 0; i < config->sphere_length; i++) {
 		num *t = intersect_ray_sphere(
@@ -337,7 +337,7 @@ struct vector3 trace_ray(
 
 	num r = closest_sphere->reflective;
 	if(
-		depth >= RAYCAST_DEPTH_MAX ||
+		depth >= RAYTRACE_DEPTH_MAX ||
 		r <= 0
 	) {
 		return local_color;
@@ -348,7 +348,7 @@ struct vector3 trace_ray(
 		pos,
 		ray,
 		0.001,
-		RAYCAST_MAX,
+		RAYTRACE_MAX,
 		config,
 		depth + 1
 	);
@@ -385,7 +385,7 @@ struct vector3 screen_to_viewport(
 	return result;
 }
 
-void raycast_with_renderer(
+void RAYTRACE_with_renderer(
 	struct scene *config,
 	SDL_Renderer *renderer
 ) {
@@ -408,7 +408,7 @@ void raycast_with_renderer(
 				config->camera_position,
 				d,
 				1,
-				RAYCAST_MAX,
+				RAYTRACE_MAX,
 				config,
 				0
 			);
@@ -567,7 +567,7 @@ int main() {
 		.camera_rotation = VECTOR3_INIT(1, 1, 1)
 	};
 
-	raycast_with_renderer(&config, renderer);
+	RAYTRACE_with_renderer(&config, renderer);
 	int is_keep_open = 1;
 	while(
 		SDL_PollEvent(&event) != -1 && 
