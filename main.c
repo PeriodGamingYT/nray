@@ -95,13 +95,21 @@ struct closest_return {
 };
 
 //// spheres
-num *intersect_ray_sphere(
+struct intersect_return {
+	num t0;
+	num t1;	
+};
+
+struct intersect_return intersect_ray_sphere(
 	struct vector3 origin,
 	struct vector3 d,
 	struct sphere arg_sphere
 ) {
-	num t[2] = { 0 };
-	num inf_t[2] = { RAYTRACE_MAX };
+	struct intersect_return inf_t = {
+		.t0 = RAYTRACE_MAX,
+		.t1 = RAYTRACE_MAX
+	};
+	
 	num r = arg_sphere.raduis;
 	struct vector3 co = vector3_sub(
 		origin, 
@@ -116,8 +124,9 @@ num *intersect_ray_sphere(
 		return inf_t;
 	}
 
-	t[0] = (-b + (num)sqrt(discriminant)) / (2 * a);
-	t[1] = (-b - (num)sqrt(discriminant)) / (2 * a);
+	struct intersect_return t;
+	t.t0 = (-b + (num)sqrt(discriminant)) / (2 * a);
+	t.t1 = (-b - (num)sqrt(discriminant)) / (2 * a);
 	return t;
 }
 
@@ -239,19 +248,19 @@ struct closest_return closest_intersection(
 	num closest_t = RAYTRACE_MAX;
 	struct sphere *closest_sphere = NULL;
 	for(int i = 0; i < config->sphere_length; i++) {
-		num *t = intersect_ray_sphere(
+		struct intersect_return t = intersect_ray_sphere(
 			origin,
 			d,
 			config->spheres[i]
 		);
 
-		if(X_IN(t[0], t_min, t_max) && t[0] < closest_t) {
-			closest_t = t[0];
+		if(X_IN(t.t0, t_min, t_max) && t.t0 < closest_t) {
+			closest_t = t.t0;
 			closest_sphere = &config->spheres[i];
 		}
 
-		if(X_IN(t[1], t_min, t_max) && t[1] < closest_t) {
-			closest_t = t[1];
+		if(X_IN(t.t1, t_min, t_max) && t.t1 < closest_t) {
+			closest_t = t.t1;
 			closest_sphere = &config->spheres[i];
 		}
 	}
