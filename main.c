@@ -75,7 +75,7 @@ DECL_VECTOR3_OPERATION(vector3_div, /)
 struct sphere {
 	struct vector3 color;
 	struct vector3 center;
-	num raduis;
+	num radius;
 	num specular;
 	num reflective;
 };
@@ -110,7 +110,7 @@ struct intersect_return intersect_ray_sphere(
 		.t1 = RAYTRACE_MAX
 	};
 	
-	num r = arg_sphere.raduis;
+	num r = arg_sphere.radius;
 	struct vector3 co = vector3_sub(
 		origin, 
 		arg_sphere.center
@@ -481,7 +481,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(255, 255, 0),
 			.center = VECTOR3_INIT(0, -101, 0),
-			.raduis = 100,
+			.radius = 100,
 			.specular = 0,
 			.reflective = 0
 		},
@@ -489,7 +489,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(0, 255, 255),
 			.center = VECTOR3_INIT(0, -5002, 0),
-			.raduis = 5000,
+			.radius = 5000,
 			.specular = 0.5,
 			.reflective = 0
 		},
@@ -497,7 +497,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(222, 184, 135),
 			.center = VECTOR3_INIT(0.2, -0.2, 1),
-			.raduis = 0.05,
+			.radius = 0.05,
 			.specular = 0.8,
 			.reflective = 0.05
 		},
@@ -505,7 +505,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(222, 184, 135),
 			.center = VECTOR3_INIT(0.23, -0.12, 1),
-			.raduis = 0.05,
+			.radius = 0.05,
 			.specular = 0.8,
 			.reflective = 0.05
 		},
@@ -513,7 +513,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(222, 184, 135),
 			.center = VECTOR3_INIT(0.24, -0.04, 1),
-			.raduis = 0.05,
+			.radius = 0.05,
 			.specular = 0.8,
 			.reflective = 0.05
 		},
@@ -521,7 +521,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(222, 184, 135),
 			.center = VECTOR3_INIT(0.22, 0.04, 1),
-			.raduis = 0.05,
+			.radius = 0.05,
 			.specular = 0.8,
 			.reflective = 0.05
 		},
@@ -529,7 +529,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(222, 184, 135),
 			.center = VECTOR3_INIT(0.2, 0.12, 1),
-			.raduis = 0.05,
+			.radius = 0.05,
 			.specular = 0.8,
 			.reflective = 0.05
 		},
@@ -537,7 +537,7 @@ int main() {
 		{
 			.color = VECTOR3_INIT(0, 255, 0),
 			.center = VECTOR3_INIT(0.22, 0.32, 1),
-			.raduis = 0.2,
+			.radius = 0.2,
 			.specular = 0.8,
 			.reflective = 0.1
 		}
